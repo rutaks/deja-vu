@@ -15,7 +15,7 @@ public interface TemporalExpression {
      *
      * @param date a {@link LocalDate}
      * @return {@code true} if this object includes {@code date}, otherwise
-     * @code false}
+     * {@code false}
      */
     boolean includes(LocalDate date);
 }
