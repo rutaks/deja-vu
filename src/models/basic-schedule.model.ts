@@ -18,7 +18,7 @@ export class BasicSchedule implements Schedule {
 
   datesInRange(start: Date, end: Date): Date[] {
     const result: Date[] = [];
-    let cursor = new Date(start);
+    const cursor = new Date(start);
 
     while (cursor <= end) {
       if (this.isOccurring(cursor)) {
@@ -50,7 +50,7 @@ export class BasicSchedule implements Schedule {
   }
 
   nextOccurrence(date: Date): Date {
-    let cursor = new Date(date);
+    const cursor = new Date(date);
     while (!this.isOccurring(cursor)) {
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -58,7 +58,7 @@ export class BasicSchedule implements Schedule {
   }
 
   previousOccurrence(date: Date): Date {
-    let cursor = new Date(date);
+    const cursor = new Date(date);
     while (!this.isOccurring(cursor)) {
       cursor.setDate(cursor.getDate() - 1);
     }
