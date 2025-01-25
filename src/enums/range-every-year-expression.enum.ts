@@ -1,0 +1,4 @@
+export enum RangeEveryYearExpression {
+  START_DAY_TO_END_DAY = "START_DAY_TO_END_DAY",
+  START_MONTH_TO_END_MONTH = "START_MONTH_TO_END_MONTH",
+}
