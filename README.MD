@@ -12,7 +12,7 @@ A flexible TypeScript library for handling complex scheduling patterns and tempo
 ## Installation
 
 ```bash
-npm install deja-vu
+npm install @rutaks/deja-vu
 ```
 
 ## Quick Start
