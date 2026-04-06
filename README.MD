@@ -1,5 +1,7 @@
 # Déjà vu
 
+**[Live Demo](https://deja-vu-playground.vercel.app/)**
+
 Compose complex recurring schedules from simple building blocks using set operations (union, intersection, difference).
 
 ## Why Déjà vu?
