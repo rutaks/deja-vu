@@ -1,18 +1,43 @@
 # Déjà vu
-A flexible TypeScript library for handling complex scheduling patterns and temporal rules.
+
+Compose complex recurring schedules from simple building blocks using set operations (union, intersection, difference).
+
+## Why Déjà vu?
+
+Scheduling rules often start simple ("every Monday") but quickly grow complex: "every weekday during summer, except the first Monday of each month." Cron expressions can't express these compositions. Calendar libraries focus on single events, not composable patterns.
+
+Déjà vu models schedules as **sets of dates**. You define simple temporal expressions, then combine them with set operations to express rules that would otherwise require custom logic:
+
+```
+INTERSECTION(
+  DAY_IN_WEEK(Monday),
+  RANGE_EVERY_YEAR(June → August)
+)
+= Every Monday in summer
+```
+
+```
+DIFFERENCE(
+  UNION(Mon, Tue, Wed, Thu, Fri),
+  DAY_IN_MONTH(1st Monday)
+)
+= Every weekday except the first Monday of the month
+```
+
+This makes it ideal for **appointment scheduling**, **availability windows**, **class timetables**, and any domain where recurring rules need to compose.
 
 ## Features
 
-- Date range scheduling
-- Recurring events (weekly, monthly)
-- Complex schedule combinations
-- Slot allocation
-- Forward/backward date iteration
+- **Composable temporal expressions**: build complex schedules from simple, reusable pieces
+- **Set operations**: union (OR), intersection (AND), and difference (NOT) over date sets
+- **Slot-aware scheduling**: attach capacity to any expression
+- **Lazy date iteration**: generate future or past dates on demand without computing all dates upfront
+- **JSON-driven configuration**: define schedules as serializable JSON, no code required
 
 ## Installation
 
 ```bash
-npm install @rutaks/deja-vu
+npm install deja-vu
 ```
 
 ## Quick Start
@@ -32,19 +57,75 @@ const scheduleElements = ScheduleJsonParser.parse(config);
 const isAvailable = scheduleElements[0].isOccurring(new Date());
 ```
 
+### A real-world example
+
+Define a schedule for summer Monday classes with 30 available slots:
+
+```typescript
+import { ScheduleJsonParser, TemporalExpressionType, RangeEveryYearExpression } from 'deja-vu';
+
+const config = {
+  schedule: [
+    {
+      type: TemporalExpressionType.INTERSECTION,
+      expressions: [
+        {
+          type: TemporalExpressionType.RANGE_EVERY_YEAR,
+          of: RangeEveryYearExpression.START_DAY_TO_END_DAY,
+          startDate: "6-1",
+          endDate: "8-31"
+        },
+        {
+          type: TemporalExpressionType.DAY_IN_WEEK,
+          day: "1"
+        }
+      ],
+      slots: 30
+    }
+  ]
+};
+
+const scheduleElements = ScheduleJsonParser.parse(config);
+scheduleElements[0].isOccurring(new Date('2025-06-02')); // true (it's a Monday in summer)
+scheduleElements[0].isOccurring(new Date('2025-12-01')); // false (not in summer)
+scheduleElements[0].slots(); // 30
+```
+
+## How It Works
+
+Déjà vu uses a tree of expressions. **Leaf expressions** define base date sets, and **composite expressions** combine them using set operations.
+
+### Leaf expressions
+
+| Expression | What it matches |
+|---|---|
+| `DAY_IN_WEEK` | A specific weekday (e.g. every Monday) |
+| `DAY_IN_MONTH` | The Nth weekday of a month (e.g. first Friday) |
+| `RANGE_EVERY_YEAR` | A date range that recurs annually (e.g. June 1 – August 31) |
+
+### Composite expressions
+
+| Expression | Set operation | Meaning |
+|---|---|---|
+| `UNION` | A ∪ B | Date occurs in **any** child expression |
+| `INTERSECTION` | A ∩ B | Date occurs in **all** child expressions |
+| `DIFFERENCE` | A \ B | Date occurs in the included expression but **not** the excluded one |
+
+These compose recursively: a union can contain intersections, a difference can exclude a union, and so on.
+
 ## Usage Guide
 
 ### Schedule Query Methods
 
-#### Available Methods
-
-| Method | Usage | Example |
-|--------|-------|---------|
-| `isOccurring(date)` | Check if schedule is active on date | `schedule.isOccurring(new Date())` |
-| `slots(date)` | Get available slots for date | `schedule.slots(new Date())` |
-| `datesInRange(start, end)` | Get all active dates in range | `schedule.datesInRange(new Date(), endDate)` |
-
-#### Date Navigation
+| Method | Parameters | Return Type | Description |
+|--------|------------|-------------|-------------|
+| `isOccurring` | date: Date | boolean | Checks if schedule occurs on given date |
+| `slots` | date: Date | number | Gets available slots for given date |
+| `datesInRange` | start: Date, end: Date | Date[] | Gets all scheduled dates in range |
+| `nextOccurrence` | date: Date | Date | Gets next scheduled date after given date |
+| `previousOccurrence` | date: Date | Date | Gets previous scheduled date before given date |
+| `futureDates` | start: Date | Generator\<Date\> | Generates future scheduled dates |
+| `pastDates` | start: Date | Generator\<Date\> | Generates past scheduled dates |
 
 ```typescript
 // Find next available date
@@ -66,9 +147,11 @@ for (const date of schedule.futureDates(new Date())) {
 const isActive = schedule.isOccurring(new Date('2025-06-01'));
 const availableSlots = schedule.slots(new Date('2025-06-01'));
 ```
-### Configuration Properties
 
-#### Day in Week Expression
+## Configuration Reference
+
+### Day in Week Expression
+
 Used for weekly recurring events.
 
 | Property | Type | Required | Description | Example |
@@ -85,7 +168,8 @@ Used for weekly recurring events.
 }
 ```
 
-#### Day in Month Expression
+### Day in Month Expression
+
 Used for monthly recurring events.
 
 | Property | Type | Required | Description | Example |
@@ -104,7 +188,8 @@ Used for monthly recurring events.
 }
 ```
 
-#### Range Every Year Expression
+### Range Every Year Expression
+
 Used for yearly recurring date ranges.
 
 | Property | Type | Required | Description | Example |
@@ -125,7 +210,8 @@ Used for yearly recurring date ranges.
 }
 ```
 
-#### Difference Expression
+### Difference Expression
+
 Used to exclude specific dates from a schedule.
 
 | Property | Type | Required | Description | Example |
@@ -151,7 +237,8 @@ Used to exclude specific dates from a schedule.
 }
 ```
 
-#### Union Expression
+### Union Expression
+
 Used to combine multiple schedules (OR condition).
 
 | Property | Type | Required | Description | Example |
@@ -171,7 +258,8 @@ Used to combine multiple schedules (OR condition).
 }
 ```
 
-#### Intersection Expression
+### Intersection Expression
+
 Used to find overlapping schedules (AND condition).
 
 | Property | Type | Required | Description | Example |
@@ -197,48 +285,4 @@ Used to find overlapping schedules (AND condition).
   ],
   slots: 25
 }
-```
-
-### Schedule Methods
-
-| Method | Parameters | Return Type | Description |
-|--------|------------|-------------|-------------|
-| isOccurring | date: Date | boolean | Checks if schedule occurs on given date |
-| slots | date: Date | number | Gets available slots for given date |
-| datesInRange | start: Date, end: Date | Date[] | Gets all scheduled dates in range |
-| nextOccurrence | date: Date | Date | Gets next scheduled date after given date |
-| previousOccurrence | date: Date | Date | Gets previous scheduled date before given date |
-| futureDates | start: Date | Generator<Date> | Generates future scheduled dates |
-| pastDates | start: Date | Generator<Date> | Generates past scheduled dates |
-
-### Complete Example
-
-```typescript
-import { ScheduleJsonParser, TemporalExpressionType, RangeEveryYearExpression } from 'deja-vu';
-
-const config = {
-  schedule: [
-    {
-      // Weekday summer classes
-      type: TemporalExpressionType.INTERSECTION,
-      expressions: [
-        {
-          type: TemporalExpressionType.RANGE_EVERY_YEAR,
-          of: RangeEveryYearExpression.START_DAY_TO_END_DAY,
-          startDate: "6-1",
-          endDate: "8-31"
-        },
-        {
-          type: TemporalExpressionType.DAY_IN_WEEK,
-          day: "1"  // Monday only
-        }
-      ],
-      slots: 30
-    }
-  ]
-};
-
-const scheduleElements = ScheduleJsonParser.parse(config);
-const isAvailable = scheduleElements[0].isOccurring(new Date('2025-06-02')); // true
-const availableSlots = scheduleElements[0].slots(); // 30
 ```
